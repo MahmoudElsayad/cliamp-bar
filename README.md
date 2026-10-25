@@ -65,6 +65,10 @@ The panel includes these controls:
 - A library with playlists from Cliamp radio, local files, and configured providers.
 - Files and URL buttons to add music.
 
+Mac media keys control playback while CliampBar is running, even when its panel is closed.
+Quitting CliampBar removes its media key controls while Cliamp keeps playing.
+The app uses macOS media controls without global keyboard access or extra permissions.
+
 Ten cream spectrum bars show the current audio while the panel is open and Cliamp is playing.
 The bars stop when playback pauses or macOS Reduce Motion is enabled.
 LIVE pulses slowly in orange for a known live broadcast while the panel is open and playback runs.
@@ -112,20 +116,25 @@ Run the tests:
 CLIAMPBAR_INTEGRATION=1 ./tests/run.sh
 ```
 
-AppKit tests cover queue hover during scrolling and the native LIVE animation without controlling your desktop.
+AppKit tests cover queue hover, the native LIVE animation, and MediaPlayer command handlers through a fake system interface.
+These tests do not send system media keys or publish a test player to Now Playing.
 
 The integration test needs Cliamp and an available audio output device.
 It uses a temporary configuration folder and a silent WAV file.
 It exercises actual playback, pause, seek, volume, playback modes, stale queue rejection, provider discovery, and real spectrum frames.
+It also tests hidden playback updates and recovery after the disposable daemon restarts.
 It does not change your Cliamp configuration.
 
 The app sends argument arrays to the installed Cliamp executable.
-It uses `remote state`, `remote capabilities`, and `remote call --wait`.
+It uses `remote state`, `remote capabilities`, `remote call --wait`, and one persistent `remote events runtime.state` stream.
+The stream keeps system media controls and Now Playing metadata current while the panel is closed.
+A fresh state read establishes the playback position when the stream connects or reconnects.
+macOS advances elapsed time using the published playback rate between state changes.
 Playback position refreshes once per second while the panel is open.
 Polling stops when the panel closes.
 A separate `cliamp visstream --fps 20` process updates only the spectrum bars.
 The app stops this display process when the panel closes or the app exits.
-Unit tests cover stream framing, input limits, eligibility, stale frames, retries, and process cleanup with a fake executable.
+Unit tests cover both streams, input limits, quiet playback, retries, command ordering, stale responses, and process cleanup with fake executables.
 Read [the architecture](docs/architecture.md) for the ownership and failure rules.
 
 ## Uninstall

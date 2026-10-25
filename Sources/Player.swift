@@ -27,6 +27,7 @@ struct PlayerSnapshot: Decodable {
     var duration: Double?
     var seekable: Bool?
     var volume: Double?
+    var speed: Double?
     var index: Int?
     var total: Int?
     var shuffle: Bool?
@@ -80,7 +81,7 @@ struct RemoteJob<Result: Decodable>: Decodable {
 struct EmptyResult: Decodable {}
 
 enum PlayerCommand {
-    case toggle, previous, next, shuffle, repeatMode
+    case play, pause, toggle, previous, next, shuffle, repeatMode
     case seek(Double), volume(Double)
     case playQueue(index: Int, revision: Int)
     case openURL(String)
@@ -89,6 +90,8 @@ enum PlayerCommand {
 
     var operation: String {
         switch self {
+        case .play: return "play"
+        case .pause: return "pause"
         case .toggle: return "toggle"
         case .previous: return "prev"
         case .next: return "next"

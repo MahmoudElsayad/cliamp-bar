@@ -42,7 +42,6 @@ final class PlayerPanel: NSObject {
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(accessibilityChanged),
             name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(resigned), name: NSWindow.didResignKeyNotification, object: panel)
-        store.onChange = { [weak self] in self?.update() }
     }
 
     func update() {

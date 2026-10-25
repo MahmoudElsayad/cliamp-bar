@@ -5,7 +5,8 @@ Cliamp owns audio, queue contents, providers, credentials, and playback preferen
 
 ## Usage
 
-The app delegate creates a `PlayerStore`, attaches a `PlayerPanel`, and calls `connect()`.
+The app delegate creates a `PlayerStore`, a `PlayerPanel`, and `SystemMediaControls`, then calls `connect()`.
+It composes the panel and system media updates in one store callback.
 The panel sends typed `PlayerCommand` values to `perform(_:)`.
 The store calls `onChange` on the main thread when state changes.
 The panel reads the store and updates its existing controls.
@@ -31,6 +32,10 @@ Cliamp handles asynchronous jobs through `remote call --wait`.
 `PlayerStore` serializes playback changes on one worker queue and reads library and player state on a separate concurrent queue.
 Slow network sources therefore do not block playback controls.
 The store dispatches presentation changes to the main thread.
+System media commands enter the same serial worker with at most 16 outstanding operations.
+Each accepted command gets one attempt, and admission fails when the connection is unavailable or the worker queue is full.
+Play and pause dispatch separate idempotent operations, which remain safe when repeated.
+Only the toggle handler dispatches toggle.
 It attaches to a running player first.
 It starts a daemon only after an explicit missing-player error, and retains its process handle to avoid duplicate startup attempts.
 It never terminates a player when the GUI quits.
@@ -57,6 +62,33 @@ Hiding, pausing, disconnecting, reconnecting, and Reduce Motion clear the bars a
 App termination also kills the stream, including SIGTERM from the installer.
 The Cliamp playback daemon remains independent.
 
+`PlayerStore` owns one `RuntimeStateSession` while connected, independent of panel visibility.
+The session runs `cliamp remote events runtime.state` and decodes newline-delimited event envelopes.
+Absent `retained` fields mean false, as in ordinary Cliamp live events.
+The parser limits each line to 64 KiB and discards malformed or oversized envelopes.
+Nonblocking main-thread reads and generation numbers prevent stale callbacks and overlapping children.
+A quiet paused stream remains open without a timeout.
+Unexpected exit retries indefinitely with exponential delays from one to eight seconds.
+Shutdown cancels retries and reaps the event child without stopping the playback daemon.
+
+A retained position can be older than a fresh state read at the same snapshot revision.
+The store ignores retained snapshot data and requests one fresh state read before enabling system media controls.
+Live events and command replies advance snapshot revisions, while equal-revision command replies cannot rewind position.
+Read generations reject replies that predate a newer observation or command.
+Stream loss clears the snapshot and displayed queue because a replacement daemon can reuse revision numbers.
+Queue and library replies also carry the stream epoch so that older replies cannot populate a replacement connection.
+Hidden events update player state without fetching queue pages or library data.
+
+`SystemMediaControls` owns public MediaPlayer registration on the app main thread.
+It uses the shared command center and default Now Playing center.
+It retains each registration token and removes that exact token during shutdown.
+The bridge publishes title, artist, album, duration, elapsed time, actual playback speed, live status, and native playback state.
+macOS advances elapsed time between updates using the published playback rate.
+Paused tracks retain metadata and resume controls.
+Stopped playback, missing tracks, and disconnects clear metadata and disable commands.
+Identical metadata does not republish, and position updates do not reset native playback state.
+The app does not intercept global keyboard events or request extra permissions.
+
 ## Design decision
 
 Two sketches compared a direct Unix socket client with a command interface through `Process`.
@@ -79,8 +111,8 @@ Library and queue responses remain bounded through pages of 100 rows.
 
 ## Implementation reconciliation
 
-The implementation uses explicit Reconnect after a lost connection, rather than automatic background retries.
-This keeps a disconnected GUI from repeatedly starting or probing the player.
-The panel polls state because position-only playback changes do not produce Cliamp events.
+A lost runtime stream reconnects automatically without starting a playback daemon.
+Explicit Reconnect repeats executable discovery and can start a missing daemon.
+Only visible panels poll position because position-only playback changes do not produce Cliamp events.
 It reloads queue rows only when the playlist revision changes.
 The installer records a custom executable path in the app environment so that Finder launches use the same Cliamp installation.

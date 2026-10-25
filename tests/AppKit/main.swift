@@ -177,6 +177,7 @@ app.setActivationPolicy(.prohibited)
 hoverTests()
 do {
     try durationTests()
+    try mediaControlsTests()
 } catch {
     fputs("FAIL: \(error)\n", stderr)
     exit(1)

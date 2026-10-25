@@ -38,6 +38,8 @@ func unitTests() throws {
     let childStart = Date()
     _ = try CommandRunner.run(shell, arguments: ["-c", "sleep 5 & exit 0"], timeout: 0.2)
     try expect(Date().timeIntervalSince(childStart) < 2, "An inherited pipe cannot hang the command runner")
+    try runtimeStateTests()
+    try mediaStoreTests()
     try spectrumTests()
     print("PASS: snapshot decoding, queue revision, pipe draining, command failures, timeout")
 }
@@ -64,6 +66,7 @@ func storeTests(client: CliampClient, file: URL) throws {
     _ = try client.call("queue.clear", as: EmptyResult.self)
     for _ in 0..<105 { _ = try client.call("queue", parameters: ["path": file.path], as: EmptyResult.self) }
     let store = PlayerStore()
+    defer { store.shutdown() }
     store.connect()
     try waitUntil("The first queue page loads") { store.queue.count == 100 }
     store.refreshQueue(loadMore: true)
@@ -82,7 +85,7 @@ func storeTests(client: CliampClient, file: URL) throws {
             retainedRevision = store.queueRevision == displayedRevision
         }
     }
-    store.refresh()
+    store.setVisible(true)
     try waitUntil("The queue refresh reaches the new revision") { store.queueTotal == 106 }
     try expect(sawStaleRows && retainedRevision, "A new player snapshot cannot relabel old rows with a new revision")
     store.onChange = {}
@@ -103,9 +106,13 @@ func integrationTests() throws {
     application.standardError = FileHandle.nullDevice
     try application.run()
     var daemonPID: Int32?
+    var replacementDaemon: Process?
     defer {
         if application.isRunning { application.terminate(); application.waitUntilExit() }
-        if let daemonPID { kill(daemonPID, SIGTERM) }
+        if let replacementDaemon, replacementDaemon.isRunning {
+            replacementDaemon.terminate()
+            replacementDaemon.waitUntilExit()
+        } else if let daemonPID { kill(daemonPID, SIGTERM) }
     }
     var connected = false
     for _ in 0..<50 {
@@ -162,6 +169,7 @@ func integrationTests() throws {
     let local = try client.call("provider.playlists", parameters: ["provider": "local"], as: PlaylistPage.self)
     try expect(local.job?.result?.playlists?.contains { $0.id == "Favorites" } == true, "Local playlists load through the GUI operation")
     try storeTests(client: client, file: file)
+    replacementDaemon = try realRuntimeStoreTests(client: client, file: file, daemonPID: daemonPID!)
     _ = try client.call("play", as: EmptyResult.self)
     application.terminate()
     application.waitUntilExit()
