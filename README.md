@@ -129,6 +129,7 @@ Run the tests:
 
 ```sh
 ./tests/run.sh
+CLIAMPBAR_MODAL_TESTS=1 ./tests/run.sh
 CLIAMPBAR_INTEGRATION=1 ./tests/run.sh
 ```
 
@@ -136,6 +137,9 @@ AppKit tests cover queue hover, link rows, dialog ordering, and the native LIVE 
 They also cover MediaPlayer command handlers through a fake system interface.
 Link tests use isolated defaults and recorded replies from successful and broken URL loads.
 These tests do not send system media keys or publish a test player to Now Playing.
+
+The modal test opens real native dialogs and samples their level during presentation.
+It covers Play, Cancel, keyboard focus, and shutdown.
 
 The integration test needs Cliamp and an available audio output device.
 It uses a temporary configuration folder and a silent WAV file.
