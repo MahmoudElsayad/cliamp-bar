@@ -1,0 +1,4 @@
+build/
+.audit/
+.DS_Store
+*.swp

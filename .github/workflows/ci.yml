@@ -1,0 +1,15 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh -n build.sh install.sh uninstall.sh package.sh tests/run.sh
+      - run: ./tests/run.sh
+      - run: ./build.sh
+      - run: codesign --verify --strict build/CliampBar.app
