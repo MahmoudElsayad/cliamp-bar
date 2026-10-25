@@ -334,7 +334,10 @@ final class PlayerCard: FlippedView {
         elapsed.stringValue = formatTime(seconds)
         duration.stringValue = length > 0 ? formatTime(length) : "LIVE"
         if state?.currentTrack == nil { duration.stringValue = "0:00" }
-        if !seek.editing { seek.maxValue = max(1, length); seek.doubleValue = min(seconds, seek.maxValue) }
+        if !seek.editing {
+            seek.maxValue = max(1, length)
+            seek.doubleValue = length > 0 ? min(seconds, length) : 0
+        }
         seek.isEnabled = ready && !store.busy && state?.seekable == true && length > 0 && store.capabilities.contains("seek.absolute")
         if !volume.editing { volume.doubleValue = state?.volume ?? 0 }
         volume.isEnabled = ready && !store.busy && store.capabilities.contains("volume")
