@@ -16,6 +16,9 @@ final class PlayerStore {
     private(set) var libraryBusy = false
     private(set) var message: String?
     var onChange: () -> Void = {}
+    var recentLinks: [RecentLink] { history.entries }
+    var recentLinksRevision: Int { history.revision }
+    private let history: LinkHistory
     private let worker = DispatchQueue(label: "io.cliampbar.player", qos: .userInitiated)
     private let reader = DispatchQueue(label: "io.cliampbar.reads", qos: .userInitiated, attributes: .concurrent)
     var executable: URL? { client?.executable }
@@ -32,7 +35,14 @@ final class PlayerStore {
     private var pendingOperations = 0
     static let commandLimit = 16
 
-    init(runtime: RuntimeStateSession = RuntimeStateSession()) { self.runtime = runtime }
+    init(runtime: RuntimeStateSession = RuntimeStateSession(), defaults: UserDefaults = .standard) {
+        self.runtime = runtime
+        history = LinkHistory(defaults: defaults)
+    }
+
+    func removeRecentLink(_ originalURL: String) {
+        if history.remove(originalURL: originalURL) { onChange() }
+    }
 
     private func observeRuntime() {
         runtime.onEvent = { [weak self] event in
@@ -205,15 +215,25 @@ final class PlayerStore {
         message = nil
         onChange()
         worker.async {
-            let result = Result { try client.call(command.operation, parameters: command.parameters, as: EmptyResult.self) }
+            let result = Result { try client.call(command.operation, parameters: command.parameters, as: MutationResult.self) }
             DispatchQueue.main.async {
                 guard self.client === client else { return }
                 self.pendingOperations -= 1
                 self.busy = self.pendingOperations > 0
                 switch result {
                 case .success(let reply):
-                    if self.streamEpoch == epoch, let state = reply.job?.snapshot { self.accept(state, allowEqual: false) }
-                case .failure(let error): self.message = error.localizedDescription
+                    if self.streamEpoch == epoch {
+                        if case .openURL(let originalURL) = command {
+                            if let link = RecentLink.successful(originalURL: originalURL, reply: reply) {
+                                self.history.record(link)
+                            } else {
+                                self.message = "Cliamp has not confirmed playback, so this link was not saved."
+                            }
+                        }
+                        if let state = reply.job?.snapshot { self.accept(state, allowEqual: false) }
+                    }
+                case .failure(let error):
+                    if self.streamEpoch == epoch { self.message = error.localizedDescription }
                 }
                 self.onChange()
                 self.refresh()

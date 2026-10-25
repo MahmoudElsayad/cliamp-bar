@@ -64,6 +64,7 @@ The panel includes these controls:
 - A scrollable queue with a control to play each track.
 - A library with playlists from Cliamp radio, local files, and configured providers.
 - Files and URL buttons to add music.
+- A Links tab to reopen successfully loaded music URLs.
 
 Mac media keys control playback while CliampBar is running, even when its panel is closed.
 Use the Mac volume keys or Control Center to adjust output volume.
@@ -83,6 +84,19 @@ The URL button loads a supported music link and starts playback.
 Some services require helpers or account setup through `cliamp setup`.
 The Library tab lists playlists from the selected source.
 Click a playlist to load it in Cliamp.
+
+The Links tab keeps the 50 most recent URLs that start playback successfully.
+CliampBar stores this history locally across app restarts.
+It stores the exact URL that you entered, including its query and fragment.
+Failed loads do not enter history or change an existing entry.
+
+Click a link to load its original URL again and start playback.
+A successful replay moves the link to the top.
+Use the separate Remove button to delete a saved link.
+
+Saved links remain readable and removable while the player is unavailable.
+Reopening requires an available player with URL support, and the player must finish its current command first.
+Reconnecting does not replay saved links.
 
 Click outside the panel or press Escape to close it.
 Right-click the menu bar icon, or click the gear, to open Settings.
@@ -118,7 +132,9 @@ Run the tests:
 CLIAMPBAR_INTEGRATION=1 ./tests/run.sh
 ```
 
-AppKit tests cover queue hover, the native LIVE animation, and MediaPlayer command handlers through a fake system interface.
+AppKit tests cover queue hover, link rows, dialog ordering, and the native LIVE animation.
+They also cover MediaPlayer command handlers through a fake system interface.
+Link tests use isolated defaults and recorded replies from successful and broken URL loads.
 These tests do not send system media keys or publish a test player to Now Playing.
 
 The integration test needs Cliamp and an available audio output device.

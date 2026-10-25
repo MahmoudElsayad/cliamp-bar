@@ -80,6 +80,11 @@ struct RemoteJob<Result: Decodable>: Decodable {
 
 struct EmptyResult: Decodable {}
 
+struct MutationResult: Decodable {
+    let tracks: [Track]?
+    let total: Int?
+}
+
 enum PlayerCommand {
     case play, pause, toggle, previous, next, shuffle, repeatMode
     case seek(Double)

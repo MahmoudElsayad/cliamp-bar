@@ -38,6 +38,8 @@ func unitTests() throws {
     let childStart = Date()
     _ = try CommandRunner.run(shell, arguments: ["-c", "sleep 5 & exit 0"], timeout: 0.2)
     try expect(Date().timeIntervalSince(childStart) < 2, "An inherited pipe cannot hang the command runner")
+    try linkHistoryTests()
+    try linkStoreTests()
     try runtimeStateTests()
     try mediaStoreTests()
     try spectrumTests()

@@ -177,6 +177,7 @@ app.setActivationPolicy(.prohibited)
 hoverTests()
 do {
     dialogTests()
+    try linkPanelTests()
     try spectrumRenderingTests()
     try durationTests()
     try mediaControlsTests()

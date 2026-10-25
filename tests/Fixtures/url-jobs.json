@@ -1,0 +1,257 @@
+[
+  {
+    "originalURL": "http://127.0.0.1:64304/quiet.wav",
+    "reply": {
+      "version": 2,
+      "id": "cliamp",
+      "ok": true,
+      "job": {
+        "id": "092c44f735d0f8bee7794a4b5ddc433e",
+        "operation": "url.load",
+        "state": "succeeded",
+        "created_at": "2026-10-25T13:45:29.620322Z",
+        "started_at": "2026-10-25T13:45:29.620342Z",
+        "finished_at": "2026-10-25T13:45:29.626425Z",
+        "result": {
+          "ok": true,
+          "total": 1,
+          "tracks": [
+            {
+              "title": "quiet",
+              "path": "http://127.0.0.1:64304/quiet.wav",
+              "stream": true
+            }
+          ]
+        },
+        "snapshot": {
+          "revision": 3,
+          "playlist_revision": 3,
+          "state": "playing",
+          "track": {
+            "title": "quiet",
+            "path": "http://127.0.0.1:64304/quiet.wav",
+            "stream": true
+          },
+          "logical_track": {
+            "title": "quiet",
+            "path": "http://127.0.0.1:64304/quiet.wav",
+            "stream": true
+          },
+          "seekable": true,
+          "volume": -90,
+          "total": 1,
+          "shuffle": false,
+          "repeat": "Off",
+          "mono": false,
+          "speed": 1,
+          "eq_preset": "Custom",
+          "eq_bands": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "visualizer": "Bars"
+        }
+      }
+    },
+    "remember": true
+  },
+  {
+    "originalURL": "http://127.0.0.1:64304/slow.wav",
+    "reply": {
+      "version": 2,
+      "id": "cliamp",
+      "ok": true,
+      "job": {
+        "id": "15456f242b16aa14123d2b1c1789e2a9",
+        "operation": "url.load",
+        "state": "succeeded",
+        "created_at": "2026-10-25T13:45:30.145081Z",
+        "started_at": "2026-10-25T13:45:30.145107Z",
+        "finished_at": "2026-10-25T13:45:34.15482Z",
+        "result": {
+          "ok": true,
+          "total": 1,
+          "tracks": [
+            {
+              "title": "slow",
+              "path": "http://127.0.0.1:64304/slow.wav",
+              "stream": true
+            }
+          ]
+        },
+        "snapshot": {
+          "revision": 4,
+          "playlist_revision": 5,
+          "state": "playing",
+          "track": {
+            "title": "slow",
+            "path": "http://127.0.0.1:64304/slow.wav",
+            "index": 1,
+            "stream": true
+          },
+          "logical_track": {
+            "title": "slow",
+            "path": "http://127.0.0.1:64304/slow.wav",
+            "index": 1,
+            "stream": true
+          },
+          "seekable": true,
+          "volume": -90,
+          "index": 1,
+          "total": 2,
+          "shuffle": false,
+          "repeat": "Off",
+          "mono": false,
+          "speed": 1,
+          "eq_preset": "Custom",
+          "eq_bands": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "visualizer": "Bars"
+        }
+      }
+    },
+    "remember": true
+  },
+  {
+    "originalURL": "http://127.0.0.1:64304/broken.m3u",
+    "reply": {
+      "version": 2,
+      "id": "cliamp",
+      "ok": true,
+      "job": {
+        "id": "f3cfd0828d7f10c7583f089b71444298",
+        "operation": "url.load",
+        "state": "succeeded",
+        "created_at": "2026-10-25T13:45:34.668758Z",
+        "started_at": "2026-10-25T13:45:34.668777Z",
+        "finished_at": "2026-10-25T13:45:34.670753Z",
+        "result": {
+          "ok": true,
+          "total": 1,
+          "tracks": [
+            {
+              "title": "no-audio",
+              "path": "http://127.0.0.1:1/no-audio.mp3",
+              "stream": true,
+              "realtime": true
+            }
+          ]
+        },
+        "snapshot": {
+          "revision": 5,
+          "playlist_revision": 7,
+          "state": "stopped",
+          "logical_track": {
+            "title": "no-audio",
+            "path": "http://127.0.0.1:1/no-audio.mp3",
+            "index": 2,
+            "stream": true,
+            "realtime": true
+          },
+          "seekable": false,
+          "volume": -90,
+          "index": 2,
+          "total": 3,
+          "shuffle": false,
+          "repeat": "Off",
+          "mono": false,
+          "speed": 1,
+          "eq_preset": "Custom",
+          "eq_bands": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "visualizer": "Bars"
+        }
+      }
+    },
+    "remember": false
+  },
+  {
+    "originalURL": "http://127.0.0.1:64304/missing.mp3",
+    "reply": {
+      "version": 2,
+      "id": "cliamp",
+      "ok": true,
+      "job": {
+        "id": "e74312bd72e47d6b06eca6af9acd30c7",
+        "operation": "url.load",
+        "state": "succeeded",
+        "created_at": "2026-10-25T13:45:35.198851Z",
+        "started_at": "2026-10-25T13:45:35.198877Z",
+        "finished_at": "2026-10-25T13:45:35.199932Z",
+        "result": {
+          "ok": true,
+          "total": 1,
+          "tracks": [
+            {
+              "title": "missing",
+              "path": "http://127.0.0.1:64304/missing.mp3",
+              "stream": true
+            }
+          ]
+        },
+        "snapshot": {
+          "revision": 6,
+          "playlist_revision": 9,
+          "state": "stopped",
+          "logical_track": {
+            "title": "missing",
+            "path": "http://127.0.0.1:64304/missing.mp3",
+            "index": 3,
+            "stream": true
+          },
+          "seekable": false,
+          "volume": -90,
+          "index": 3,
+          "total": 4,
+          "shuffle": false,
+          "repeat": "Off",
+          "mono": false,
+          "speed": 1,
+          "eq_preset": "Custom",
+          "eq_bands": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "visualizer": "Bars"
+        }
+      }
+    },
+    "remember": false
+  }
+]

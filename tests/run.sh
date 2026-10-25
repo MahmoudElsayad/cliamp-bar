@@ -2,13 +2,13 @@
 set -eu
 cd "$(dirname "$0")/.."
 mkdir -p build/tests
-xcrun swiftc -swift-version 5 Sources/Player.swift Sources/PlayerStore.swift Sources/RuntimeState.swift Sources/Spectrum.swift tests/SpectrumTests.swift tests/RuntimeStateTests.swift tests/MediaStoreTests.swift tests/RealRuntimeTests.swift tests/main.swift -o build/tests/PlayerTests
+xcrun swiftc -swift-version 5 Sources/Player.swift Sources/LinkHistory.swift Sources/PlayerStore.swift Sources/RuntimeState.swift Sources/Spectrum.swift tests/FakeRuntimePlayer.swift tests/LinkHistoryTests.swift tests/SpectrumTests.swift tests/RuntimeStateTests.swift tests/MediaStoreTests.swift tests/RealRuntimeTests.swift tests/main.swift -o build/tests/PlayerTests
 build/tests/PlayerTests
 
 appkit=$(mktemp -d /tmp/cliampbar-appkit.XXXXXX)
 trap 'rm -rf "$appkit"' EXIT HUP INT TERM
-xcrun swiftc -swift-version 5 Sources/Player.swift Sources/PlayerStore.swift Sources/RuntimeState.swift Sources/Spectrum.swift \
-  Sources/Theme.swift Sources/DurationLabel.swift Sources/PlayerPanel.swift Sources/SystemMediaControls.swift tests/AppKit/MediaControlsTests.swift tests/AppKit/SpectrumRenderingTests.swift tests/AppKit/LinkPanelTests.swift tests/AppKit/main.swift -o "$appkit/AppKitTests"
+xcrun swiftc -swift-version 5 Sources/Player.swift Sources/LinkHistory.swift Sources/PlayerStore.swift Sources/RuntimeState.swift Sources/Spectrum.swift \
+  tests/FakeRuntimePlayer.swift Sources/Theme.swift Sources/DurationLabel.swift Sources/PlayerPanel.swift Sources/SystemMediaControls.swift tests/AppKit/MediaControlsTests.swift tests/AppKit/SpectrumRenderingTests.swift tests/AppKit/LinkPanelTests.swift tests/AppKit/main.swift -o "$appkit/AppKitTests"
 "$appkit/AppKitTests"
 rm -rf "$appkit"
 

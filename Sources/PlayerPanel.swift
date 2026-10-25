@@ -212,6 +212,10 @@ final class PlayerPanel: NSObject {
     }
 }
 
+enum PlayerSection: String {
+    case queue, library, links
+}
+
 final class PlayerCard: FlippedView {
     private let store: PlayerStore
     private let status = sectionLabel("CONNECTING")
@@ -226,7 +230,7 @@ final class PlayerCard: FlippedView {
     private let scroll = NSScrollView()
     private let source = NSPopUpButton(frame: .zero, pullsDown: false)
     private let count = label("", font: Theme.data, color: Theme.muted)
-    private var showLibrary = false
+    private var section = PlayerSection.queue
     private var listIdentity = ""
     private var play: ActionButton!
     private var previous: ActionButton!
@@ -235,6 +239,7 @@ final class PlayerCard: FlippedView {
     private var repeatButton: ActionButton!
     private var queueTab: ActionButton!
     private var libraryTab: ActionButton!
+    private var linksTab: ActionButton!
     private var addFiles: ActionButton!
     private var addURL: ActionButton!
     private var menuButton: ActionButton!
@@ -295,10 +300,12 @@ final class PlayerCard: FlippedView {
         errorLabel.lineBreakMode = .byTruncatingTail
         errorBox.addSubview(errorLabel)
         addSubview(errorBox)
-        queueTab = ActionButton(title: "QUEUE", description: "Show queue", action: { [weak self] in self?.selectLibrary(false) })
-        libraryTab = ActionButton(title: "LIBRARY", description: "Show library", action: { [weak self] in self?.selectLibrary(true) })
+        queueTab = ActionButton(title: "QUEUE", description: "Show queue", action: { [weak self] in self?.selectSection(.queue) })
+        libraryTab = ActionButton(title: "LIBRARY", description: "Show library", action: { [weak self] in self?.selectSection(.library) })
         addSubview(queueTab)
         addSubview(libraryTab)
+        linksTab = ActionButton(title: "LINKS", description: "Show links", action: { [weak self] in self?.selectSection(.links) })
+        addSubview(linksTab)
         addSubview(count)
         source.target = self
         source.action = #selector(providerChanged)
@@ -338,10 +345,12 @@ final class PlayerCard: FlippedView {
         return view
     }
 
-    private func selectLibrary(_ value: Bool) {
-        showLibrary = value
+    private func selectSection(_ value: PlayerSection) {
+        guard section != value else { return }
+        section = value
         listIdentity = ""
-        if value { store.loadPlaylists(provider: store.selectedProvider) }
+        scroll.contentView.scroll(to: .zero)
+        if value == .library { store.loadPlaylists(provider: store.selectedProvider) }
         update()
     }
 
@@ -413,18 +422,23 @@ final class PlayerCard: FlippedView {
         errorLabel.stringValue = error ?? ""
         errorLabel.toolTip = error
         let top = 336 + errorHeight
-        queueTab.frame = NSRect(x: 12, y: top, width: 76, height: 28)
-        libraryTab.frame = NSRect(x: 96, y: top, width: 84, height: 28)
-        queueTab.setTitle("QUEUE", color: showLibrary ? Theme.muted : Theme.accentText)
-        libraryTab.setTitle("LIBRARY", color: showLibrary ? Theme.accentText : Theme.muted)
-        count.frame = NSRect(x: 204, y: top + 7, width: 160, height: 16)
+        queueTab.frame = NSRect(x: 12, y: top, width: 68, height: 28)
+        libraryTab.frame = NSRect(x: 84, y: top, width: 80, height: 28)
+        linksTab.frame = NSRect(x: 168, y: top, width: 64, height: 28)
+        queueTab.setTitle("QUEUE", color: section == .queue ? Theme.accentText : Theme.muted)
+        libraryTab.setTitle("LIBRARY", color: section == .library ? Theme.accentText : Theme.muted)
+        linksTab.setTitle("LINKS", color: section == .links ? Theme.accentText : Theme.muted)
+        count.frame = NSRect(x: 240, y: top + 7, width: 124, height: 16)
         count.alignment = .right
-        if showLibrary {
+        switch section {
+        case .library:
             count.stringValue = store.libraryBusy ? "LOADING" : "\(store.playlistTotal) \(store.playlistTotal == 1 ? "PLAYLIST" : "PLAYLISTS")"
-        } else {
+        case .queue:
             count.stringValue = "\(store.queueTotal) \(store.queueTotal == 1 ? "TRACK" : "TRACKS")"
+        case .links:
+            count.stringValue = "\(store.recentLinks.count) \(store.recentLinks.count == 1 ? "LINK" : "LINKS")"
         }
-        source.isHidden = !showLibrary
+        source.isHidden = section != .library
         source.isEnabled = ready && !store.libraryBusy
         source.frame = NSRect(x: 12, y: top + 36, width: 356, height: 28)
         let providerKeys = store.providers.map(\.key)
@@ -437,7 +451,7 @@ final class PlayerCard: FlippedView {
             }
         }
         if let index = providerKeys.firstIndex(of: store.selectedProvider) { source.selectItem(at: index) }
-        let listTop = top + (showLibrary ? 76 : 36)
+        let listTop = top + (section == .library ? 76 : 36)
         scroll.frame = NSRect(x: 1, y: listTop, width: 378, height: max(36, frame.height - 48 - listTop))
         footerLine.frame.origin.y = frame.height - 48
         addFiles.frame = NSRect(x: 12, y: frame.height - 38, width: 88, height: 28)
@@ -447,13 +461,24 @@ final class PlayerCard: FlippedView {
     }
 
     private func updateList(ready: Bool) {
-        let identity = "\(showLibrary)-\(ready)-\(store.busy)-\(store.libraryBusy)-\(store.queueLoading)-\(store.queueRevision ?? -1)-\(store.snapshot?.index ?? -1)-\(store.queue.count)-\(store.selectedProvider)-\(store.playlists.map(\.id))-\(scroll.frame.height)"
+        let identity = "\(section)-\(store.recentLinksRevision)-\(store.capabilities.contains("url.load"))-\(ready)-\(store.busy)-\(store.libraryBusy)-\(store.queueLoading)-\(store.queueRevision ?? -1)-\(store.snapshot?.index ?? -1)-\(store.queue.count)-\(store.selectedProvider)-\(store.playlists.map(\.id))-\(scroll.frame.height)"
         guard identity != listIdentity else { return }
         listIdentity = identity
         let oldPosition = scroll.contentView.bounds.origin
         let list = LibraryList()
         var y: CGFloat = 0
-        if showLibrary {
+        switch section {
+        case .links:
+            for link in store.recentLinks {
+                let row = RecentLinkRow(link: link, width: 378,
+                                        canReplay: ready && !store.busy && store.capabilities.contains("url.load"),
+                                        onReplay: { [weak store] in store?.perform(.openURL(link.originalURL)) },
+                                        onRemove: { [weak store] in store?.removeRecentLink(link.originalURL) })
+                row.frame.origin.y = y
+                list.addSubview(row)
+                y += row.frame.height
+            }
+        case .library:
             for playlist in store.playlists {
                 let subtitle = playlist.track_count.map { $0 == 1 ? "1 track" : "\($0) tracks" } ?? "Playlist"
                 let row = LibraryRow(title: playlist.name, subtitle: subtitle, active: false, width: 378) { [weak store] in
@@ -463,7 +488,7 @@ final class PlayerCard: FlippedView {
                 list.addSubview(row)
                 y += row.frame.height
             }
-        } else {
+        case .queue:
             let revision = store.queueRevision ?? 0
             for (offset, track) in store.queue.enumerated() {
                 let index = track.index ?? offset
@@ -476,21 +501,25 @@ final class PlayerCard: FlippedView {
                 y += row.frame.height
             }
         }
-        let more = showLibrary ? store.playlists.count < store.playlistTotal : store.queue.count < store.queueTotal
+        let more = section == .library ? store.playlists.count < store.playlistTotal
+            : section == .queue && store.queue.count < store.queueTotal
         if more {
             let button = ActionButton(title: "LOAD MORE", description: "Load more rows") { [weak self] in
                 guard let self else { return }
-                if self.showLibrary { self.store.loadPlaylists(provider: self.store.selectedProvider, loadMore: true) }
+                if self.section == .library { self.store.loadPlaylists(provider: self.store.selectedProvider, loadMore: true) }
                 else { self.store.refreshQueue(loadMore: true) }
             }
             button.setTitle("LOAD MORE")
-            button.isEnabled = showLibrary ? !store.libraryBusy : !store.queueLoading
+            button.isEnabled = section == .library ? !store.libraryBusy : !store.queueLoading
             button.frame = NSRect(x: 16, y: y + 8, width: 344, height: 28)
             list.addSubview(button)
             y += 44
         }
         if y == 0 {
-            let empty = label(ready ? (showLibrary ? "No playlists in this source." : "Add files or open the library.") : "Connect to Cliamp to see your music.", color: Theme.muted)
+            let text = section == .links ? "URLs appear here after successful playback."
+                : ready ? (section == .library ? "No playlists in this source." : "Add files or open the library.")
+                : "Connect to Cliamp to see your music."
+            let empty = label(text, color: Theme.muted)
             empty.frame = NSRect(x: 16, y: 16, width: 344, height: 36)
             list.addSubview(empty)
             y = 68

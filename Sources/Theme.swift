@@ -151,6 +151,7 @@ final class LibraryList: FlippedView {
     func synchronizeHover() {
         let point = currentPointer
         for case let row as LibraryRow in subviews { row.synchronizeHover(at: point) }
+        for case let row as RecentLinkRow in subviews { row.replay.synchronizeHover(at: point) }
     }
 
     deinit {
@@ -160,7 +161,8 @@ final class LibraryList: FlippedView {
 
 final class LibraryRow: NSView {
     override var isFlipped: Bool { true }
-    override var acceptsFirstResponder: Bool { true }
+    override var acceptsFirstResponder: Bool { isEnabled }
+    var isEnabled = true { didSet { setAccessibilityEnabled(isEnabled) } }
     private var tracking: NSTrackingArea?
     private let detail: NSTextField
     private let onSelect: () -> Void
@@ -196,13 +198,13 @@ final class LibraryRow: NSView {
         let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
         tracking = area
         addTrackingArea(area)
-        synchronizeHover(at: (superview as? LibraryList)?.currentPointer)
+        synchronizeHover(at: (enclosingScrollView?.documentView as? LibraryList)?.currentPointer)
     }
     override func mouseEntered(with event: NSEvent) {
-        synchronizeHover(at: (superview as? LibraryList)?.currentPointer)
+        synchronizeHover(at: (enclosingScrollView?.documentView as? LibraryList)?.currentPointer)
     }
     override func mouseExited(with event: NSEvent) {
-        synchronizeHover(at: (superview as? LibraryList)?.currentPointer)
+        synchronizeHover(at: (enclosingScrollView?.documentView as? LibraryList)?.currentPointer)
     }
     fileprivate func synchronizeHover(at windowPoint: NSPoint?) {
         let hovered = windowPoint.map {
@@ -215,12 +217,16 @@ final class LibraryRow: NSView {
         detail.textColor = active ? Theme.accentText : (hovered ? Theme.secondary : Theme.muted)
         CATransaction.commit()
     }
-    override func mouseUp(with event: NSEvent) { onSelect() }
+    override func mouseUp(with event: NSEvent) { if isEnabled { onSelect() } }
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 36 || event.keyCode == 49 { onSelect() }
+        if event.keyCode == 36 || event.keyCode == 49 { if isEnabled { onSelect() } }
         else { super.keyDown(with: event) }
     }
-    override func accessibilityPerformPress() -> Bool { onSelect(); return true }
+    override func accessibilityPerformPress() -> Bool {
+        guard isEnabled else { return false }
+        onSelect()
+        return true
+    }
     override func becomeFirstResponder() -> Bool {
         layer?.borderColor = Theme.accent.cgColor
         layer?.borderWidth = 1
@@ -230,4 +236,27 @@ final class LibraryRow: NSView {
         layer?.borderWidth = 0
         return true
     }
+}
+
+final class RecentLinkRow: FlippedView {
+    let replay: LibraryRow
+    let remove: ActionButton
+
+    init(link: RecentLink, width: CGFloat, canReplay: Bool,
+         onReplay: @escaping () -> Void, onRemove: @escaping () -> Void) {
+        replay = LibraryRow(title: link.title, subtitle: link.originalURL, active: false, width: width - 44, onSelect: onReplay)
+        remove = ActionButton(symbol: "xmark", description: "Remove \(link.title) from Links", action: onRemove)
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: 52))
+        setAccessibilityElement(false)
+        replay.isEnabled = canReplay
+        replay.toolTip = link.originalURL
+        replay.setAccessibilityLabel("Reopen \(link.title), \(link.originalURL)")
+        replay.setAccessibilityValue(link.originalURL)
+        for case let field as NSTextField in replay.subviews { field.toolTip = link.originalURL }
+        remove.frame = NSRect(x: width - 44, y: 12, width: 28, height: 28)
+        addSubview(replay)
+        addSubview(remove)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 }
