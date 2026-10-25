@@ -8,6 +8,31 @@ final class KeyPanel: NSPanel {
     override func cancelOperation(_ sender: Any?) { onCancel() }
 }
 
+final class PanelDialogSession {
+    private(set) var isOpen = false
+    private(set) var stopped = false
+
+    func run(window: NSWindow, above panel: NSWindow,
+             runModal: () -> NSApplication.ModalResponse) -> NSApplication.ModalResponse? {
+        guard !isOpen, !stopped, NSApp.modalWindow == nil else { return nil }
+        isOpen = true
+        let previousLevel = window.level
+        window.level = NSWindow.Level(rawValue: panel.level.rawValue + 1)
+        defer {
+            window.level = previousLevel
+            isOpen = false
+            if !stopped, panel.isVisible, NSApp.isActive { panel.makeKeyAndOrderFront(nil) }
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        return runModal()
+    }
+
+    func shutdown() {
+        stopped = true
+        if isOpen { NSApp.abortModal() }
+    }
+}
+
 final class PlayerPanel: NSObject {
     private let store: PlayerStore
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -15,7 +40,9 @@ final class PlayerPanel: NSObject {
                                  styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
     private var card: PlayerCard!
     private var outsideMonitor: Any?
-    private var dialogOpen = false
+    private let dialogs = PanelDialogSession()
+    private var menuOpen = false
+    private var dialogOpen: Bool { dialogs.isOpen || menuOpen }
     private let spectrum = SpectrumSession()
 
     init(store: PlayerStore) {
@@ -52,12 +79,13 @@ final class PlayerPanel: NSObject {
     }
 
     @objc private func toggle() {
+        guard !dialogOpen, !dialogs.stopped else { return }
         if NSApp.currentEvent?.type == .rightMouseUp { showMenu(); return }
         panel.isVisible ? close() : open()
     }
 
     func open() {
-        guard !dialogOpen, NSApp.modalWindow == nil else { return }
+        guard !dialogOpen, !dialogs.stopped, NSApp.modalWindow == nil else { return }
         if panel.isVisible { panel.makeKeyAndOrderFront(nil); return }
         guard let button = statusItem.button, let window = button.window else { return }
         let anchor = window.convertToScreen(button.convert(button.bounds, to: nil))
@@ -96,7 +124,7 @@ final class PlayerPanel: NSObject {
         updateSpectrum()
     }
 
-    func shutdown() { card.stopAnimations(); spectrum.shutdown() }
+    func shutdown() { dialogs.shutdown(); close(); spectrum.shutdown() }
 
     deinit {
         spectrum.shutdown()
@@ -110,21 +138,20 @@ final class PlayerPanel: NSObject {
     }
 
     private func openFiles() {
-        dialogOpen = true
+        guard !dialogOpen, !dialogs.stopped else { return }
         let picker = NSOpenPanel()
         picker.title = "Add audio to Cliamp"
         picker.prompt = "Add to Queue"
         picker.allowsMultipleSelection = true
         picker.canChooseDirectories = false
         picker.allowedContentTypes = [.audio, .movie]
-        NSApp.activate(ignoringOtherApps: true)
-        if picker.runModal() == .OK { store.addFiles(picker.urls.map(\.path)) }
-        dialogOpen = false
-        panel.makeKeyAndOrderFront(nil)
+        if dialogs.run(window: picker, above: panel, runModal: { picker.runModal() }) == .OK {
+            store.addFiles(picker.urls.map(\.path))
+        }
     }
 
     private func openURL() {
-        dialogOpen = true
+        guard !dialogOpen, !dialogs.stopped else { return }
         let alert = NSAlert()
         alert.messageText = "Open a stream or music URL"
         alert.informativeText = "Cliamp supports direct audio streams and supported music links. Some services need yt-dlp or account setup."
@@ -135,18 +162,18 @@ final class PlayerPanel: NSObject {
         input.setAccessibilityLabel("Music URL")
         alert.accessoryView = input
         alert.window.initialFirstResponder = input
-        NSApp.activate(ignoringOtherApps: true)
-        if alert.runModal() == .alertFirstButtonReturn {
+        if dialogs.run(window: alert.window, above: panel, runModal: { alert.runModal() }) == .alertFirstButtonReturn {
             let text = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             if let url = URL(string: text), ["https", "http"].contains(url.scheme?.lowercased() ?? ""), url.host != nil {
                 store.perform(.openURL(text))
             } else { store.showMessage("Enter a complete http:// or https:// music URL.") }
         }
-        dialogOpen = false
-        panel.makeKeyAndOrderFront(nil)
     }
 
     private func showMenu() {
+        guard !dialogOpen, !dialogs.stopped, NSApp.modalWindow == nil else { return }
+        menuOpen = true
+        defer { menuOpen = false }
         let menu = NSMenu()
         let login = menu.addItem(withTitle: "Launch at Login", action: #selector(toggleLogin), keyEquivalent: "")
         login.target = self
@@ -160,9 +187,7 @@ final class PlayerPanel: NSObject {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit CliampBar (keep music playing)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         if panel.isVisible {
-            dialogOpen = true
             menu.popUp(positioning: nil, at: NSPoint(x: 344, y: card.frame.height - 36), in: card)
-            dialogOpen = false
         } else {
             statusItem.menu = menu
             statusItem.button?.performClick(nil)

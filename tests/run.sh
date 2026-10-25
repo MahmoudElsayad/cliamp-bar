@@ -8,7 +8,7 @@ build/tests/PlayerTests
 appkit=$(mktemp -d /tmp/cliampbar-appkit.XXXXXX)
 trap 'rm -rf "$appkit"' EXIT HUP INT TERM
 xcrun swiftc -swift-version 5 Sources/Player.swift Sources/PlayerStore.swift Sources/RuntimeState.swift Sources/Spectrum.swift \
-  Sources/Theme.swift Sources/DurationLabel.swift Sources/PlayerPanel.swift Sources/SystemMediaControls.swift tests/AppKit/MediaControlsTests.swift tests/AppKit/SpectrumRenderingTests.swift tests/AppKit/main.swift -o "$appkit/AppKitTests"
+  Sources/Theme.swift Sources/DurationLabel.swift Sources/PlayerPanel.swift Sources/SystemMediaControls.swift tests/AppKit/MediaControlsTests.swift tests/AppKit/SpectrumRenderingTests.swift tests/AppKit/LinkPanelTests.swift tests/AppKit/main.swift -o "$appkit/AppKitTests"
 "$appkit/AppKitTests"
 rm -rf "$appkit"
 

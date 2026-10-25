@@ -176,6 +176,7 @@ let app = NSApplication.shared
 app.setActivationPolicy(.prohibited)
 hoverTests()
 do {
+    dialogTests()
     try spectrumRenderingTests()
     try durationTests()
     try mediaControlsTests()
