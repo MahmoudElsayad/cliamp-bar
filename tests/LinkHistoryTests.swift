@@ -139,6 +139,27 @@ func linkStoreTests() throws {
     try expect(store.recentLinks.count == 2 && store.recentLinks[0].lastOpenedAt > original[0].lastOpenedAt,
                "Successful replay updates the timestamp without creating a duplicate")
 
+    try fixture.write("command-delay.json", 0.3)
+    let replayCount = fixture.urlCalls(url, kind: "captured").count
+    try expect(store.perform(.openURL(url)), "A delayed replay starts before removal")
+    try waitUntil("The replay captures a successful reply") { fixture.urlCalls(url, kind: "captured").count > replayCount }
+    store.removeRecentLink(url)
+    try waitUntil("The removed replay completes") { !store.busy }
+    try expect(!store.recentLinks.contains { $0.originalURL == url }
+               && !LinkHistory(defaults: defaults).entries.contains { $0.originalURL == url },
+               "Removing an active replay prevents its successful completion from restoring the link")
+    try expect(store.perform(.openURL(url)), "A later explicit load can remember the removed URL again")
+    try waitUntil("The later explicit load saves the URL") { !store.busy && store.recentLinks.first?.originalURL == url }
+
+    let previousCount = fixture.urlCalls(url, kind: "captured").count
+    try expect(store.perform(.openURL(url)), "Another delayed replay starts")
+    try waitUntil("The old replay captures its reply") { fixture.urlCalls(url, kind: "captured").count > previousCount }
+    store.removeRecentLink(url)
+    try expect(store.perform(.openURL(url), queueIfBusy: true), "An explicit replacement attempt enters the command queue")
+    try waitUntil("The replacement captures its reply after the old completion") { fixture.urlCalls(url, kind: "captured").count > previousCount + 1 }
+    try expect(!store.recentLinks.contains { $0.originalURL == url }, "The old completion cannot save over a pending replacement")
+    try waitUntil("The replacement retains ownership and saves") { !store.busy && store.recentLinks.first?.originalURL == url }
+
     let beforeStale = store.recentLinks
     try fixture.write("command-delay.json", 0.6)
     let staleURL = "https://example.com/stale"
@@ -163,5 +184,5 @@ func linkStoreTests() throws {
     store.shutdown()
     RunLoop.current.run(until: Date().addingTimeInterval(0.3))
     try expect(LinkHistory(defaults: defaults).entries.map(\.originalURL) == [second], "A completion from a discarded client cannot persist history")
-    print("PASS: URL command admission, exact replay, busy rejection, failed jobs, timeout, transport error, old revision, stale epoch, reconnect, shutdown")
+    print("PASS: URL command admission, exact replay, busy rejection, failed jobs, timeout, transport error, old revision, stale epoch, reconnect, removal during replay, replacement save ownership, shutdown")
 }

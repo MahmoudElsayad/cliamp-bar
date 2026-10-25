@@ -129,3 +129,48 @@ func linkPanelTests() throws {
     }
     print("PASS: LINKS layout, long URLs, full accessibility, offline removal, scroll reset, single replay, busy/unsupported states, same-count MRU refresh")
 }
+
+func linkHoverTests() {
+    let window = fixtureWindow()
+    defer { window.close() }
+    let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 378, height: 104))
+    window.contentView = scroll
+    let list = LibraryList(frame: NSRect(x: 0, y: 0, width: 378, height: 260))
+    var pointer: NSPoint?
+    list.pointerLocation = { _ in pointer }
+    let rows = (0..<5).map { index -> RecentLinkRow in
+        let link = RecentLink(originalURL: "https://example.com/\(index)", title: "Link \(index)",
+                              artist: nil, lastOpenedAt: Date(), trackCount: 1)
+        let row = RecentLinkRow(link: link, width: 378, canReplay: index != 2, onReplay: {}, onRemove: {})
+        row.frame.origin.y = CGFloat(index * 52)
+        list.addSubview(row)
+        return row
+    }
+    scroll.documentView = list
+    window.orderFront(nil)
+    scroll.contentView.scroll(to: .zero)
+    pointer = rows[0].replay.convert(NSPoint(x: 20, y: 26), to: nil)
+    list.synchronizeHover()
+    expect(rows[0].replay.layer?.backgroundColor == Theme.raised.cgColor, "A nested enabled link highlights under the pointer")
+    scroll.contentView.scroll(to: NSPoint(x: 0, y: 52))
+    expect(rows[0].replay.layer?.backgroundColor == Theme.surface.cgColor
+           && rows[1].replay.layer?.backgroundColor == Theme.raised.cgColor,
+           "Scrolling nested links transfers hover under a stationary pointer")
+    rows[1].replay.isEnabled = false
+    expect(rows[1].replay.layer?.backgroundColor == Theme.surface.cgColor,
+           "Disabling a hovered link immediately removes its hover")
+    rows[1].replay.updateTrackingAreas()
+    expect(rows[1].replay.layer?.backgroundColor == Theme.surface.cgColor, "Tracking updates cannot highlight a disabled link")
+    scroll.contentView.scroll(to: NSPoint(x: 0, y: 104))
+    expect(rows[2].replay.layer?.backgroundColor == Theme.surface.cgColor,
+           "Scrolling an offline link under a stationary pointer cannot highlight it")
+    expect(!rows[2].replay.isAccessibilityEnabled() && !rows[2].replay.accessibilityPerformPress(),
+           "Disabled nested links expose their disabled accessibility state")
+    expect((rows[2].replay.subviews[0] as? NSTextField)?.textColor == Theme.text
+           && (rows[2].replay.subviews[1] as? NSTextField)?.textColor == Theme.muted,
+           "Disabled nested links preserve readable text")
+    rows[2].replay.isEnabled = true
+    expect(rows[2].replay.layer?.backgroundColor == Theme.raised.cgColor,
+           "Enabling a link synchronizes the stationary pointer")
+    print("PASS: nested link stationary-pointer scrolling, disabled hover, readable text, disabled accessibility, re-enable")
+}

@@ -8,8 +8,9 @@ build/tests/PlayerTests
 appkit=$(mktemp -d /tmp/cliampbar-appkit.XXXXXX)
 trap 'rm -rf "$appkit"' EXIT HUP INT TERM
 xcrun swiftc -swift-version 5 Sources/Player.swift Sources/LinkHistory.swift Sources/PlayerStore.swift Sources/RuntimeState.swift Sources/Spectrum.swift \
-  tests/FakeRuntimePlayer.swift Sources/Theme.swift Sources/DurationLabel.swift Sources/PlayerPanel.swift Sources/SystemMediaControls.swift tests/AppKit/MediaControlsTests.swift tests/AppKit/SpectrumRenderingTests.swift tests/AppKit/LinkPanelTests.swift tests/AppKit/main.swift -o "$appkit/AppKitTests"
+  tests/FakeRuntimePlayer.swift Sources/Theme.swift Sources/DurationLabel.swift Sources/PlayerPanel.swift Sources/SystemMediaControls.swift tests/AppKit/MediaControlsTests.swift tests/AppKit/SpectrumRenderingTests.swift tests/AppKit/LinkPanelTests.swift tests/AppKit/ModalDialogTests.swift tests/AppKit/main.swift -o "$appkit/AppKitTests"
 "$appkit/AppKitTests"
+if [ "${CLIAMPBAR_MODAL_TESTS:-0}" = 1 ]; then "$appkit/AppKitTests" --modal-dialogs; fi
 rm -rf "$appkit"
 
 if [ "${CLIAMPBAR_INTEGRATION:-0}" = 1 ]; then
