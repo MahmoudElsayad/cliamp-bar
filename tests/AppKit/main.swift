@@ -84,10 +84,20 @@ func hoverTests() {
     scroll.contentView.scroll(to: NSPoint(x: 0, y: 104))
     expect(newRows[1].layer?.backgroundColor == Theme.surface.cgColor && newRows[2].layer?.backgroundColor == Theme.raised.cgColor,
            "The replacement list observes later clip-view movement")
+    scroll.contentView.scroll(to: .zero)
+    pointer = newRows[0].convert(NSPoint(x: 20, y: 26), to: nil)
+    replacement.synchronizeHover()
+    window.orderOut(nil)
+    expect(newRows[0].layer?.backgroundColor == Theme.surface.cgColor,
+           "Closing the panel clears the hovered row without changing the queue")
+    pointer = newRows[1].convert(NSPoint(x: 20, y: 26), to: nil)
+    window.orderFront(nil)
+    expect(newRows[0].layer?.backgroundColor == Theme.surface.cgColor && newRows[1].layer?.backgroundColor == Theme.raised.cgColor,
+           "Reopening an unchanged queue synchronizes the new pointer position")
     pointer = nil
     replacement.synchronizeHover()
-    expect(newRows[2].layer?.backgroundColor == Theme.surface.cgColor, "A missing pointer clears hover")
-    print("PASS: stationary-pointer scrolling, explicit fills, clipping, active row, focus, row rebuild")
+    expect(newRows[1].layer?.backgroundColor == Theme.surface.cgColor, "A missing pointer clears hover")
+    print("PASS: stationary-pointer scrolling, explicit fills, clipping, active row, focus, row rebuild, reopen")
 }
 
 func snapshot(state: String = "playing", duration: Double = 0, track: String = "\"stream\":true,\"realtime\":true",

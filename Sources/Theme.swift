@@ -120,6 +120,7 @@ class FlippedView: NSView {
 final class LibraryList: FlippedView {
     var pointerLocation: (NSWindow) -> NSPoint? = { $0.mouseLocationOutsideOfEventStream }
     private var clipObserver: NSObjectProtocol?
+    private var visibilityObserver: NSKeyValueObservation?
 
     override func viewDidMoveToSuperview() {
         super.viewDidMoveToSuperview()
@@ -136,6 +137,9 @@ final class LibraryList: FlippedView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        visibilityObserver = window?.observe(\.isVisible, options: [.new]) { [weak self] _, _ in
+            self?.synchronizeHover()
+        }
         synchronizeHover()
     }
 
