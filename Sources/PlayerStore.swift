@@ -18,6 +18,7 @@ final class PlayerStore {
     var onChange: () -> Void = {}
     private let worker = DispatchQueue(label: "io.cliampbar.player", qos: .userInitiated)
     private let reader = DispatchQueue(label: "io.cliampbar.reads", qos: .userInitiated, attributes: .concurrent)
+    var executable: URL? { client?.executable }
     private var client: CliampClient?
     private var daemon: Process?
     private var refreshing = false

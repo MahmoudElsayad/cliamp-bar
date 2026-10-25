@@ -34,6 +34,7 @@ func unitTests() throws {
     let childStart = Date()
     _ = try CommandRunner.run(shell, arguments: ["-c", "sleep 5 & exit 0"], timeout: 0.2)
     try expect(Date().timeIntervalSince(childStart) < 2, "An inherited pipe cannot hang the command runner")
+    try spectrumTests()
     print("PASS: snapshot decoding, queue revision, pipe draining, command failures, timeout")
 }
 
@@ -123,6 +124,7 @@ func integrationTests() throws {
     _ = try client.call("play", as: EmptyResult.self)
     Thread.sleep(forTimeInterval: 0.3)
     try expect(try client.snapshot().isPlaying, "The real audio engine starts playback")
+    try realSpectrumTests(executable: executable)
     _ = try client.call("pause", as: EmptyResult.self)
     try expect(try client.snapshot().state == "paused", "Pause changes the actual playback state")
     _ = try client.call("seek.absolute", parameters: ["value": 3], as: EmptyResult.self)
@@ -159,6 +161,7 @@ func integrationTests() throws {
     _ = try client.call("play", as: EmptyResult.self)
     application.terminate()
     application.waitUntilExit()
+    try expect(application.terminationReason == .exit && application.terminationStatus == 0, "SIGTERM runs normal application termination cleanup")
     try expect(try client.snapshot().isPlaying, "Playback survives the GUI process exiting")
     _ = try client.call("pause", as: EmptyResult.self)
     print("PASS: daemon start, actual playback, pause, seek, volume, modes, stale queue, library")

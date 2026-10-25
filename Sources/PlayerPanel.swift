@@ -16,6 +16,7 @@ final class PlayerPanel: NSObject {
     private var card: PlayerCard!
     private var outsideMonitor: Any?
     private var dialogOpen = false
+    private let spectrum = SpectrumSession()
 
     init(store: PlayerStore) {
         self.store = store
@@ -37,6 +38,9 @@ final class PlayerPanel: NSObject {
         card = PlayerCard(store: store, height: 640, onFiles: { [weak self] in self?.openFiles() },
                           onURL: { [weak self] in self?.openURL() }, onMenu: { [weak self] in self?.showMenu() })
         panel.contentView = card
+        spectrum.onFrame = { [weak self] bands in self?.card.spectrum.bands = bands }
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(accessibilityChanged),
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(resigned), name: NSWindow.didResignKeyNotification, object: panel)
         store.onChange = { [weak self] in self?.update() }
     }
@@ -45,6 +49,7 @@ final class PlayerPanel: NSObject {
         let state = store.snapshot
         statusItem.button?.toolTip = state?.currentTrack.map { "\($0.displayTitle) - CliampBar" } ?? "CliampBar"
         if panel.isVisible { card.update() }
+        updateSpectrum()
     }
 
     @objc private func toggle() {
@@ -69,12 +74,32 @@ final class PlayerPanel: NSObject {
             self?.close()
         }
         store.setVisible(true)
+        updateSpectrum()
     }
 
     func close() {
         panel.orderOut(nil)
         if let outsideMonitor { NSEvent.removeMonitor(outsideMonitor); self.outsideMonitor = nil }
         store.setVisible(false)
+        updateSpectrum()
+    }
+
+    private func updateSpectrum() {
+        let connected: Bool
+        if case .ready = store.connection { connected = true } else { connected = false }
+        spectrum.update(visible: panel.isVisible, connected: connected, playing: store.snapshot?.isPlaying == true,
+                        reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, executable: store.executable)
+    }
+
+    @objc private func accessibilityChanged() { updateSpectrum() }
+
+    func shutdown() { spectrum.shutdown() }
+
+    deinit {
+        spectrum.shutdown()
+        NotificationCenter.default.removeObserver(self)
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
+        if let outsideMonitor { NSEvent.removeMonitor(outsideMonitor) }
     }
 
     @objc private func resigned() {
@@ -163,6 +188,7 @@ final class PlayerCard: FlippedView {
     private let store: PlayerStore
     private let status = sectionLabel("CONNECTING")
     private let title = label("CliampBar", font: .systemFont(ofSize: 20, weight: .semibold))
+    let spectrum = SpectrumView()
     private let artist = label("Your music, in the menu bar.", color: Theme.muted)
     private let elapsed = label("0:00", font: Theme.data, color: Theme.muted)
     private let duration = label("0:00", font: Theme.data, color: Theme.muted)
@@ -212,10 +238,11 @@ final class PlayerCard: FlippedView {
         title.lineBreakMode = .byTruncatingTail
         put(title, 16, 88, 348, 48)
         put(artist, 16, 140, 348, 18)
-        put(seek, 14, 174, 352, 20)
-        put(elapsed, 16, 198, 170, 14)
+        put(spectrum, 16, 168, 348, 32)
+        put(seek, 14, 214, 352, 20)
+        put(elapsed, 16, 238, 170, 14)
         duration.alignment = .right
-        put(duration, 204, 198, 160, 14)
+        put(duration, 204, 238, 160, 14)
         seek.onChange = { store.perform(.seek($0)) }
         volume.onChange = { store.perform(.volume($0)) }
 
@@ -224,22 +251,22 @@ final class PlayerCard: FlippedView {
         next = ActionButton(symbol: "forward.end.fill", description: "Next track", action: { store.perform(.next) })
         shuffle = ActionButton(symbol: "shuffle", description: "Toggle shuffle", action: { store.perform(.shuffle) })
         repeatButton = ActionButton(symbol: "repeat", description: "Cycle repeat mode", action: { store.perform(.repeatMode) })
-        put(shuffle, 16, 230, 32, 32)
-        put(previous, 112, 228, 36, 36)
-        put(play, 168, 224, 44, 44)
+        put(shuffle, 16, 270, 32, 32)
+        put(previous, 112, 268, 36, 36)
+        put(play, 168, 264, 44, 44)
         play.wantsLayer = true
         play.layer?.backgroundColor = Theme.accent.cgColor
         play.layer?.cornerRadius = 4
         play.contentTintColor = Theme.accentInk
-        put(next, 232, 228, 36, 36)
-        put(repeatButton, 332, 230, 32, 32)
+        put(next, 232, 268, 36, 36)
+        put(repeatButton, 332, 270, 32, 32)
         let speaker = NSImageView(image: NSImage(systemSymbolName: "speaker.wave.2", accessibilityDescription: "Volume")!)
         speaker.contentTintColor = Theme.muted
-        put(speaker, 16, 284, 20, 16)
-        put(volume, 44, 280, 252, 20)
+        put(speaker, 16, 324, 20, 16)
+        put(volume, 44, 320, 252, 20)
         volumeLabel.alignment = .right
-        put(volumeLabel, 300, 282, 64, 16)
-        listLine = line(y: 316)
+        put(volumeLabel, 300, 322, 64, 16)
+        listLine = line(y: 356)
 
         errorBox.wantsLayer = true
         errorBox.layer?.backgroundColor = Theme.errorSurface.cgColor
@@ -364,11 +391,11 @@ final class PlayerCard: FlippedView {
         let error = connectionError ?? store.message ?? state?.stream_error
         errorBox.isHidden = error == nil || error == ""
         let errorHeight: CGFloat = errorBox.isHidden ? 0 : 56
-        errorBox.frame = NSRect(x: 12, y: 324, width: 356, height: 48)
+        errorBox.frame = NSRect(x: 12, y: 364, width: 356, height: 48)
         errorLabel.frame = NSRect(x: 8, y: 7, width: 340, height: 34)
         errorLabel.stringValue = error ?? ""
         errorLabel.toolTip = error
-        let top = 328 + errorHeight
+        let top = 368 + errorHeight
         queueTab.frame = NSRect(x: 12, y: top, width: 76, height: 28)
         libraryTab.frame = NSRect(x: 96, y: top, width: 84, height: 28)
         queueTab.setTitle("QUEUE", color: showLibrary ? Theme.muted : Theme.accentText)
@@ -463,4 +490,32 @@ func formatTime(_ seconds: Double) -> String {
 
 private extension Theme {
     static let captionFont = NSFont.systemFont(ofSize: 11)
+}
+
+final class SpectrumView: NSView {
+    override var isOpaque: Bool { true }
+    var bands: [Double] = [] { didSet { needsDisplay = true } }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setAccessibilityElement(false)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    override func draw(_ dirtyRect: NSRect) {
+        Theme.surface.setFill()
+        bounds.fill()
+        let gap: CGFloat = 5
+        let width = (bounds.width - gap * 9) / 10
+        for index in 0..<10 {
+            let level = bands.indices.contains(index) ? bands[index] : 0
+            let segments = Int((level * 8).rounded(.up))
+            for segment in 0..<max(1, segments) {
+                (segments == 0 ? Theme.border : Theme.text).setFill()
+                NSRect(x: CGFloat(index) * (width + gap), y: CGFloat(segment) * 4,
+                       width: width, height: 2).fill()
+            }
+        }
+    }
 }

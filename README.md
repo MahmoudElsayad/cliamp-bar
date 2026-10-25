@@ -65,6 +65,9 @@ The panel includes these controls:
 - A library with playlists from Cliamp radio, local files, and configured providers.
 - Files and URL buttons to add music.
 
+Ten cream spectrum bars show the current audio while the panel is open and Cliamp is playing.
+The bars stop when playback pauses or macOS Reduce Motion is enabled.
+
 The Files button appends selected audio files to the current queue.
 Click a queue row to play it.
 The URL button loads a supported music link and starts playback.
@@ -108,13 +111,16 @@ CLIAMPBAR_INTEGRATION=1 ./tests/run.sh
 
 The integration test needs Cliamp and an available audio output device.
 It uses a temporary configuration folder and a silent WAV file.
-It exercises actual playback, pause, seek, volume, playback modes, stale queue rejection, and provider discovery.
+It exercises actual playback, pause, seek, volume, playback modes, stale queue rejection, provider discovery, and real spectrum frames.
 It does not change your Cliamp configuration.
 
 The app sends argument arrays to the installed Cliamp executable.
 It uses `remote state`, `remote capabilities`, and `remote call --wait`.
 Playback position refreshes once per second while the panel is open.
 Polling stops when the panel closes.
+A separate `cliamp visstream --fps 20` process updates only the spectrum bars.
+The app stops this display process when the panel closes or the app exits.
+Unit tests cover stream framing, input limits, eligibility, stale frames, retries, and process cleanup with a fake executable.
 Read [the architecture](docs/architecture.md) for the ownership and failure rules.
 
 ## Uninstall

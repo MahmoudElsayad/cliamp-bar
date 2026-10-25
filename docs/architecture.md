@@ -41,6 +41,22 @@ It does not restore a cached queue over an existing session.
 The panel uses the same AppKit approach and exact palette as VoxtypeOSD.
 The app discovers supported operations before it enables controls.
 
+`PlayerPanel` also owns one display-only `SpectrumSession` and sends frames directly to `SpectrumView`.
+The session runs `cliamp visstream --fps 20` with the connected client's executable and existing child environment.
+It runs only while the panel is visible, connected, and playing, with Reduce Motion disabled.
+Ten segmented cream bars use `Theme.text` on `Theme.surface` and leave orange for controls.
+Frames never trigger a store update or redraw the queue.
+
+`SpectrumFrame` decodes ten finite bands and clamps them to zero through one.
+`SpectrumParser` accepts split newline-delimited JSON and limits each line to 64 KiB.
+It discards an oversized line through its newline and ignores malformed frames.
+The session owns nonblocking pipe reads and cancellation on the main queue to prevent close/read races.
+Generations reject callbacks from older sessions, and restart waits for the previous child to exit.
+Frames expire after one second, with at most three retries per eligible session.
+Hiding, pausing, disconnecting, reconnecting, and Reduce Motion clear the bars and stop the stream.
+App termination also kills the stream, including SIGTERM from the installer.
+The Cliamp playback daemon remains independent.
+
 ## Design decision
 
 Two sketches compared a direct Unix socket client with a command interface through `Process`.
