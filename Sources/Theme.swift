@@ -162,7 +162,12 @@ final class LibraryList: FlippedView {
 final class LibraryRow: NSView {
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { isEnabled }
-    var isEnabled = true { didSet { setAccessibilityEnabled(isEnabled) } }
+    var isEnabled = true {
+        didSet {
+            setAccessibilityEnabled(isEnabled)
+            synchronizeHover(at: (enclosingScrollView?.documentView as? LibraryList)?.currentPointer)
+        }
+    }
     private var tracking: NSTrackingArea?
     private let detail: NSTextField
     private let onSelect: () -> Void
@@ -209,7 +214,7 @@ final class LibraryRow: NSView {
     fileprivate func synchronizeHover(at windowPoint: NSPoint?) {
         let hovered = windowPoint.map {
             let point = convert($0, from: nil)
-            return !isHiddenOrHasHiddenAncestor && bounds.contains(point) && visibleRect.contains(point)
+            return isEnabled && !isHiddenOrHasHiddenAncestor && bounds.contains(point) && visibleRect.contains(point)
         } ?? false
         CATransaction.begin()
         CATransaction.setDisableActions(true)

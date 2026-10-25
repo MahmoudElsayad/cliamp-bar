@@ -19,6 +19,7 @@ final class PlayerStore {
     var recentLinks: [RecentLink] { history.entries }
     var recentLinksRevision: Int { history.revision }
     private let history: LinkHistory
+    private var pendingLinkSaves: [String: UUID] = [:]
     private let worker = DispatchQueue(label: "io.cliampbar.player", qos: .userInitiated)
     private let reader = DispatchQueue(label: "io.cliampbar.reads", qos: .userInitiated, attributes: .concurrent)
     var executable: URL? { client?.executable }
@@ -41,6 +42,7 @@ final class PlayerStore {
     }
 
     func removeRecentLink(_ originalURL: String) {
+        pendingLinkSaves.removeValue(forKey: originalURL)
         if history.remove(originalURL: originalURL) { onChange() }
     }
 
@@ -58,6 +60,7 @@ final class PlayerStore {
         runtime.onDisconnect = { [weak self] in
             guard let self else { return }
             self.streamEpoch += 1
+            self.pendingLinkSaves.removeAll()
             self.streamEstablished = false
             self.refreshing = false
             self.snapshot = nil
@@ -104,6 +107,7 @@ final class PlayerStore {
         guard !busy else { return }
         runtime.shutdown()
         streamEpoch += 1
+        pendingLinkSaves.removeAll()
         streamEstablished = false
         refreshing = false
         queueLoading = false
@@ -212,6 +216,13 @@ final class PlayerStore {
         busy = true
         commandGeneration += 1
         let epoch = streamEpoch
+        let linkSave: (url: String, id: UUID)?
+        if case .openURL(let originalURL) = command {
+            let url = originalURL.trimmingCharacters(in: .whitespacesAndNewlines)
+            let id = UUID()
+            pendingLinkSaves[url] = id
+            linkSave = (url, id)
+        } else { linkSave = nil }
         message = nil
         onChange()
         worker.async {
@@ -220,10 +231,12 @@ final class PlayerStore {
                 guard self.client === client else { return }
                 self.pendingOperations -= 1
                 self.busy = self.pendingOperations > 0
+                let canSaveLink = linkSave.map { self.pendingLinkSaves[$0.url] == $0.id } ?? false
+                if canSaveLink, let linkSave { self.pendingLinkSaves.removeValue(forKey: linkSave.url) }
                 switch result {
                 case .success(let reply):
                     if self.streamEpoch == epoch {
-                        if case .openURL(let originalURL) = command {
+                        if canSaveLink, case .openURL(let originalURL) = command {
                             if let link = RecentLink.successful(originalURL: originalURL, reply: reply) {
                                 self.history.record(link)
                             } else {
@@ -344,6 +357,7 @@ final class PlayerStore {
         timer = nil
         runtime.shutdown()
         streamEpoch += 1
+        pendingLinkSaves.removeAll()
         client = nil
         snapshot = nil
         connection = .unavailable("CliampBar stopped.")

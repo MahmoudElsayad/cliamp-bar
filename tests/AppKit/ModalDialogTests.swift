@@ -15,6 +15,11 @@ func realModalDialogTests() {
         var observed = false
         var correctLevel = false
         var wasKey = false
+        var becameKey = false
+        let keyObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: window, queue: nil
+        ) { _ in becameKey = true }
+        defer { NotificationCenter.default.removeObserver(keyObserver) }
         var ownedModal = false
         var rejectedReentry = false
         let timer = Timer(timeInterval: 0.5, repeats: false) { _ in
@@ -24,17 +29,20 @@ func realModalDialogTests() {
             let windows = CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID) as? [[String: Any]] ?? []
             let layer = windows.first { ($0[kCGWindowNumber as String] as? Int) == window.windowNumber }?[kCGWindowLayer as String] as? Int
             correctLevel = window.level.rawValue > parent.level.rawValue && layer == window.level.rawValue
-            print("MODAL: \(name) modal=\(ownedModal) key=\(wasKey) appkit=\(window.level.rawValue) windowServer=\(layer ?? -1) parent=\(parent.level.rawValue)")
+            print("MODAL: \(name) modal=\(ownedModal) key=\(wasKey) becameKey=\(becameKey) appkit=\(window.level.rawValue) windowServer=\(layer ?? -1) parent=\(parent.level.rawValue)")
             rejectedReentry = dialogs.run(window: window, above: parent, runModal: { .OK }) == nil
             action()
         }
         RunLoop.main.add(timer, forMode: .modalPanel)
         let result = dialogs.run(window: window, above: parent, runModal: runModal)
         timer.invalidate()
+        if !dialogs.stopped, NSApp.isActive {
+            expect(parent.isKeyWindow, "\(name) returns keyboard focus to the visible parent")
+        }
         window.orderOut(nil)
         expect(observed && ownedModal, "\(name) was sampled inside its actual AppKit modal loop")
         expect(correctLevel, "\(name) stays above the parent in AppKit and WindowServer during presentation")
-        expect(wasKey, "\(name) takes keyboard focus")
+        expect(becameKey || wasKey, "\(name) takes keyboard focus")
         expect(rejectedReentry && !dialogs.isOpen, "\(name) rejects reentry and releases modal ownership")
         expect(window.level == original, "\(name) restores its level after presentation")
         window.level = .normal

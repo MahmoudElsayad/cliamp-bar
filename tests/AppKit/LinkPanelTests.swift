@@ -123,10 +123,6 @@ func linkPanelTests() throws {
         expect(name.textColor == Theme.text && row.replay.subviews[1].frame.maxX <= row.replay.bounds.maxX,
                "Disabled rows preserve readable themed text and contain their labels")
     }
-    if let bitmap = card.bitmapImageRepForCachingDisplay(in: card.bounds) {
-        card.cacheDisplay(in: card.bounds, to: bitmap)
-        try bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: ".audit/links-panel-offscreen.png"))
-    }
     print("PASS: LINKS layout, long URLs, full accessibility, offline removal, scroll reset, single replay, busy/unsupported states, same-count MRU refresh")
 }
 

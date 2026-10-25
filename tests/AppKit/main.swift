@@ -175,9 +175,11 @@ func durationTests() throws {
 let app = NSApplication.shared
 if CommandLine.arguments.contains("--modal-dialogs") {
     app.setActivationPolicy(.accessory)
-    app.finishLaunching()
-    realModalDialogTests()
-    exit(0)
+    DispatchQueue.main.async {
+        realModalDialogTests()
+        exit(0)
+    }
+    app.run()
 }
 app.setActivationPolicy(.prohibited)
 hoverTests()

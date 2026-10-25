@@ -17,8 +17,19 @@ final class PanelDialogSession {
         guard !isOpen, !stopped, NSApp.modalWindow == nil else { return nil }
         isOpen = true
         let previousLevel = window.level
-        window.level = NSWindow.Level(rawValue: panel.level.rawValue + 1)
+        let dialogLevel = NSWindow.Level(rawValue: panel.level.rawValue + 1)
+        window.level = dialogLevel
+        // AppKit resets the level when runModal presents an alert or file picker.
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: window, queue: nil
+        ) { _ in
+            window.level = dialogLevel
+            if window.firstResponder === window, let responder = window.initialFirstResponder {
+                window.makeFirstResponder(responder)
+            }
+        }
         defer {
+            NotificationCenter.default.removeObserver(observer)
             window.level = previousLevel
             isOpen = false
             if !stopped, panel.isVisible, NSApp.isActive { panel.makeKeyAndOrderFront(nil) }
