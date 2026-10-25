@@ -394,7 +394,11 @@ final class PlayerCard: FlippedView {
         libraryTab.setTitle("LIBRARY", color: showLibrary ? Theme.accentText : Theme.muted)
         count.frame = NSRect(x: 204, y: top + 7, width: 160, height: 16)
         count.alignment = .right
-        count.stringValue = showLibrary ? (store.libraryBusy ? "LOADING" : "\(store.playlistTotal) PLAYLISTS") : "\(store.queueTotal) TRACKS"
+        if showLibrary {
+            count.stringValue = store.libraryBusy ? "LOADING" : "\(store.playlistTotal) \(store.playlistTotal == 1 ? "PLAYLIST" : "PLAYLISTS")"
+        } else {
+            count.stringValue = "\(store.queueTotal) \(store.queueTotal == 1 ? "TRACK" : "TRACKS")"
+        }
         source.isHidden = !showLibrary
         source.isEnabled = ready && !store.libraryBusy
         source.frame = NSRect(x: 12, y: top + 36, width: 356, height: 28)
@@ -426,7 +430,7 @@ final class PlayerCard: FlippedView {
         var y: CGFloat = 0
         if showLibrary {
             for playlist in store.playlists {
-                let subtitle = playlist.track_count.map { "\($0) tracks" } ?? "Playlist"
+                let subtitle = playlist.track_count.map { $0 == 1 ? "1 track" : "\($0) tracks" } ?? "Playlist"
                 let row = LibraryRow(title: playlist.name, subtitle: subtitle, active: false, width: 378) { [weak store] in
                     store?.perform(.load(provider: store?.selectedProvider ?? "local", playlist: playlist.id))
                 }
