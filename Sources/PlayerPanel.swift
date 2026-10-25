@@ -67,8 +67,8 @@ final class PlayerPanel: NSObject {
         card.frame.size = NSSize(width: 380, height: height)
         panel.setContentSize(card.frame.size)
         panel.setFrameTopLeftPoint(NSPoint(x: max(screen.minX + 8, min(anchor.midX - 190, screen.maxX - 388)), y: anchor.minY - 6))
-        card.update()
         panel.makeKeyAndOrderFront(nil)
+        card.update()
         outsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             guard self?.dialogOpen == false else { return }
             self?.close()
@@ -79,6 +79,7 @@ final class PlayerPanel: NSObject {
 
     func close() {
         panel.orderOut(nil)
+        card.stopAnimations()
         if let outsideMonitor { NSEvent.removeMonitor(outsideMonitor); self.outsideMonitor = nil }
         store.setVisible(false)
         updateSpectrum()
@@ -91,9 +92,12 @@ final class PlayerPanel: NSObject {
                         reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, executable: store.executable)
     }
 
-    @objc private func accessibilityChanged() { updateSpectrum() }
+    @objc private func accessibilityChanged() {
+        if panel.isVisible { card.update() }
+        updateSpectrum()
+    }
 
-    func shutdown() { spectrum.shutdown() }
+    func shutdown() { card.stopAnimations(); spectrum.shutdown() }
 
     deinit {
         spectrum.shutdown()
@@ -191,7 +195,7 @@ final class PlayerCard: FlippedView {
     let spectrum = SpectrumView()
     private let artist = label("Your music, in the menu bar.", color: Theme.muted)
     private let elapsed = label("0:00", font: Theme.data, color: Theme.muted)
-    private let duration = label("0:00", font: Theme.data, color: Theme.muted)
+    private let duration = DurationLabel(frame: .zero)
     private let volumeLabel = label("0 dB", font: Theme.data, color: Theme.muted)
     private let seek = PlayerSlider(description: "Playback position", min: 0, max: 1)
     private let volume = PlayerSlider(description: "Volume in decibels", min: -30, max: 6)
@@ -241,7 +245,6 @@ final class PlayerCard: FlippedView {
         put(spectrum, 16, 168, 348, 32)
         put(seek, 14, 214, 352, 20)
         put(elapsed, 16, 238, 170, 14)
-        duration.alignment = .right
         put(duration, 204, 238, 160, 14)
         seek.onChange = { store.perform(.seek($0)) }
         volume.onChange = { store.perform(.volume($0)) }
@@ -305,6 +308,8 @@ final class PlayerCard: FlippedView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
+    func stopAnimations() { duration.stop() }
+
     private func put(_ view: NSView, _ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) {
         view.frame = NSRect(x: x, y: y, width: width, height: height)
         addSubview(view)
@@ -359,8 +364,8 @@ final class PlayerCard: FlippedView {
         let seconds = state?.position ?? 0
         let length = state?.duration ?? 0
         elapsed.stringValue = formatTime(seconds)
-        duration.stringValue = length > 0 ? formatTime(length) : "LIVE"
-        if state?.currentTrack == nil { duration.stringValue = "0:00" }
+        duration.update(snapshot: state, connected: ready, visible: window?.isVisible == true,
+                        reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
         if !seek.editing {
             seek.maxValue = max(1, length)
             seek.doubleValue = length > 0 ? min(seconds, length) : 0
@@ -430,7 +435,7 @@ final class PlayerCard: FlippedView {
         guard identity != listIdentity else { return }
         listIdentity = identity
         let oldPosition = scroll.contentView.bounds.origin
-        let list = FlippedView()
+        let list = LibraryList()
         var y: CGFloat = 0
         if showLibrary {
             for playlist in store.playlists {
@@ -478,6 +483,7 @@ final class PlayerCard: FlippedView {
         scroll.documentView = list
         scroll.contentView.scroll(to: NSPoint(x: 0, y: min(oldPosition.y, max(0, y - scroll.frame.height))))
         scroll.reflectScrolledClipView(scroll.contentView)
+        list.synchronizeHover()
     }
 }
 

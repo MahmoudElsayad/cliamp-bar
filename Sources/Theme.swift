@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 
 // Shared palette and typography with VoxtypeOSD.
 enum Theme {
@@ -116,6 +117,43 @@ class FlippedView: NSView {
     override var isFlipped: Bool { true }
 }
 
+final class LibraryList: FlippedView {
+    var pointerLocation: (NSWindow) -> NSPoint? = { $0.mouseLocationOutsideOfEventStream }
+    private var clipObserver: NSObjectProtocol?
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        if let clipObserver { NotificationCenter.default.removeObserver(clipObserver) }
+        clipObserver = nil
+        if let clip = enclosingScrollView?.contentView {
+            clip.postsBoundsChangedNotifications = true
+            clipObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification, object: clip, queue: nil
+            ) { [weak self] _ in self?.synchronizeHover() }
+        }
+        synchronizeHover()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        synchronizeHover()
+    }
+
+    fileprivate var currentPointer: NSPoint? {
+        guard let window, window.isVisible else { return nil }
+        return pointerLocation(window)
+    }
+
+    func synchronizeHover() {
+        let point = currentPointer
+        for case let row as LibraryRow in subviews { row.synchronizeHover(at: point) }
+    }
+
+    deinit {
+        if let clipObserver { NotificationCenter.default.removeObserver(clipObserver) }
+    }
+}
+
 final class LibraryRow: NSView {
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
@@ -145,7 +183,7 @@ final class LibraryRow: NSView {
         divider.wantsLayer = true
         divider.layer?.backgroundColor = Theme.raised.cgColor
         addSubview(divider)
-        layer?.backgroundColor = active ? Theme.accentSurface.cgColor : nil
+        layer?.backgroundColor = active ? Theme.accentSurface.cgColor : Theme.surface.cgColor
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
     override func updateTrackingAreas() {
@@ -154,12 +192,24 @@ final class LibraryRow: NSView {
         let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
         tracking = area
         addTrackingArea(area)
+        synchronizeHover(at: (superview as? LibraryList)?.currentPointer)
     }
     override func mouseEntered(with event: NSEvent) {
-        if !active { layer?.backgroundColor = Theme.raised.cgColor; detail.textColor = Theme.secondary }
+        synchronizeHover(at: (superview as? LibraryList)?.currentPointer)
     }
     override func mouseExited(with event: NSEvent) {
-        if !active { layer?.backgroundColor = nil; detail.textColor = Theme.muted }
+        synchronizeHover(at: (superview as? LibraryList)?.currentPointer)
+    }
+    fileprivate func synchronizeHover(at windowPoint: NSPoint?) {
+        let hovered = windowPoint.map {
+            let point = convert($0, from: nil)
+            return !isHiddenOrHasHiddenAncestor && bounds.contains(point) && visibleRect.contains(point)
+        } ?? false
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layer?.backgroundColor = (active ? Theme.accentSurface : (hovered ? Theme.raised : Theme.surface)).cgColor
+        detail.textColor = active ? Theme.accentText : (hovered ? Theme.secondary : Theme.muted)
+        CATransaction.commit()
     }
     override func mouseUp(with event: NSEvent) { onSelect() }
     override func keyDown(with event: NSEvent) {

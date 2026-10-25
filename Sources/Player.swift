@@ -9,6 +9,7 @@ struct Track: Decodable {
     var index: Int?
     var duration: Double?
     var stream: Bool?
+    var realtime: Bool?
 
     var displayTitle: String {
         if let title, !title.isEmpty { return title }

@@ -67,6 +67,9 @@ The panel includes these controls:
 
 Ten cream spectrum bars show the current audio while the panel is open and Cliamp is playing.
 The bars stop when playback pauses or macOS Reduce Motion is enabled.
+LIVE pulses slowly in orange for a known live broadcast while the panel is open and playback runs.
+Reduce Motion keeps LIVE static.
+Unknown audio duration appears as `--:--`.
 
 The Files button appends selected audio files to the current queue.
 Click a queue row to play it.
@@ -108,6 +111,8 @@ Run the tests:
 ./tests/run.sh
 CLIAMPBAR_INTEGRATION=1 ./tests/run.sh
 ```
+
+AppKit tests cover queue hover during scrolling and the native LIVE animation without controlling your desktop.
 
 The integration test needs Cliamp and an available audio output device.
 It uses a temporary configuration folder and a silent WAV file.
