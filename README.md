@@ -60,12 +60,13 @@ The panel includes these controls:
 
 - Play, pause, previous track, and next track.
 - Playback position for tracks that support seeking.
-- Volume from -30 to +6 dB, shuffle, and repeat.
+- Shuffle and repeat.
 - A scrollable queue with a control to play each track.
 - A library with playlists from Cliamp radio, local files, and configured providers.
 - Files and URL buttons to add music.
 
 Mac media keys control playback while CliampBar is running, even when its panel is closed.
+Use the Mac volume keys or Control Center to adjust output volume.
 Quitting CliampBar removes its media key controls while Cliamp keeps playing.
 The app uses macOS media controls without global keyboard access or extra permissions.
 

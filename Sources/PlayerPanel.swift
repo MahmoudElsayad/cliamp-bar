@@ -195,9 +195,7 @@ final class PlayerCard: FlippedView {
     private let artist = label("Your music, in the menu bar.", color: Theme.muted)
     private let elapsed = label("0:00", font: Theme.data, color: Theme.muted)
     private let duration = DurationLabel(frame: .zero)
-    private let volumeLabel = label("0 dB", font: Theme.data, color: Theme.muted)
     private let seek = PlayerSlider(description: "Playback position", min: 0, max: 1)
-    private let volume = PlayerSlider(description: "Volume in decibels", min: -30, max: 6)
     private let errorBox = FlippedView()
     private let errorLabel = NSTextField(wrappingLabelWithString: "")
     private let scroll = NSScrollView()
@@ -246,7 +244,6 @@ final class PlayerCard: FlippedView {
         put(elapsed, 16, 238, 170, 14)
         put(duration, 204, 238, 160, 14)
         seek.onChange = { store.perform(.seek($0)) }
-        volume.onChange = { store.perform(.volume($0)) }
 
         previous = ActionButton(symbol: "backward.end.fill", description: "Previous track", action: { store.perform(.previous) })
         play = ActionButton(symbol: "play.fill", description: "Play", action: { store.perform(.toggle) })
@@ -262,13 +259,7 @@ final class PlayerCard: FlippedView {
         play.contentTintColor = Theme.accentInk
         put(next, 232, 268, 36, 36)
         put(repeatButton, 332, 270, 32, 32)
-        let speaker = NSImageView(image: NSImage(systemSymbolName: "speaker.wave.2", accessibilityDescription: "Volume")!)
-        speaker.contentTintColor = Theme.muted
-        put(speaker, 16, 324, 20, 16)
-        put(volume, 44, 320, 252, 20)
-        volumeLabel.alignment = .right
-        put(volumeLabel, 300, 322, 64, 16)
-        listLine = line(y: 356)
+        listLine = line(y: 324)
 
         errorBox.wantsLayer = true
         errorBox.layer?.backgroundColor = Theme.errorSurface.cgColor
@@ -370,9 +361,6 @@ final class PlayerCard: FlippedView {
             seek.doubleValue = length > 0 ? min(seconds, length) : 0
         }
         seek.isEnabled = ready && !store.busy && state?.seekable == true && length > 0 && store.capabilities.contains("seek.absolute")
-        if !volume.editing { volume.doubleValue = state?.volume ?? 0 }
-        volume.isEnabled = ready && !store.busy && store.capabilities.contains("volume")
-        volumeLabel.stringValue = String(format: "%.0f dB", state?.volume ?? 0)
         play.image = NSImage(systemSymbolName: state?.isPlaying == true ? "pause.fill" : "play.fill", accessibilityDescription: state?.isPlaying == true ? "Pause" : "Play")
         play.setAccessibilityLabel(state?.isPlaying == true ? "Pause" : "Play")
         play.toolTip = state?.isPlaying == true ? "Pause" : "Play"
@@ -395,11 +383,11 @@ final class PlayerCard: FlippedView {
         let error = connectionError ?? store.message ?? state?.stream_error
         errorBox.isHidden = error == nil || error == ""
         let errorHeight: CGFloat = errorBox.isHidden ? 0 : 56
-        errorBox.frame = NSRect(x: 12, y: 364, width: 356, height: 48)
+        errorBox.frame = NSRect(x: 12, y: 332, width: 356, height: 48)
         errorLabel.frame = NSRect(x: 8, y: 7, width: 340, height: 34)
         errorLabel.stringValue = error ?? ""
         errorLabel.toolTip = error
-        let top = 368 + errorHeight
+        let top = 336 + errorHeight
         queueTab.frame = NSRect(x: 12, y: top, width: 76, height: 28)
         libraryTab.frame = NSRect(x: 96, y: top, width: 84, height: 28)
         queueTab.setTitle("QUEUE", color: showLibrary ? Theme.muted : Theme.accentText)

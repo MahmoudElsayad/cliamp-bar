@@ -82,7 +82,7 @@ struct EmptyResult: Decodable {}
 
 enum PlayerCommand {
     case play, pause, toggle, previous, next, shuffle, repeatMode
-    case seek(Double), volume(Double)
+    case seek(Double)
     case playQueue(index: Int, revision: Int)
     case openURL(String)
     case appendFile(String)
@@ -98,7 +98,6 @@ enum PlayerCommand {
         case .shuffle: return "shuffle"
         case .repeatMode: return "repeat"
         case .seek: return "seek.absolute"
-        case .volume: return "volume"
         case .playQueue: return "queue.play"
         case .openURL: return "url.load"
         case .appendFile: return "queue"
@@ -108,7 +107,7 @@ enum PlayerCommand {
 
     var parameters: [String: Any] {
         switch self {
-        case .seek(let value), .volume(let value): return ["value": value]
+        case .seek(let value): return ["value": value]
         case .playQueue(let index, let revision): return ["index": index, "if_revision": revision]
         case .openURL(let path): return ["path": path, "play": true]
         case .appendFile(let path): return ["path": path]
