@@ -70,6 +70,7 @@ Quitting CliampBar removes its media key controls while Cliamp keeps playing.
 The app uses macOS media controls without global keyboard access or extra permissions.
 
 Ten cream spectrum bars show the current audio while the panel is open and Cliamp is playing.
+Solid bar heights follow Cliamp's display levels from zero to one and round down to physical pixels.
 The bars stop when playback pauses or macOS Reduce Motion is enabled.
 LIVE pulses slowly in orange for a known live broadcast while the panel is open and playback runs.
 Reduce Motion keeps LIVE static.

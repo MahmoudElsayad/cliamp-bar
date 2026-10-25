@@ -513,14 +513,13 @@ final class SpectrumView: NSView {
         bounds.fill()
         let gap: CGFloat = 5
         let width = (bounds.width - gap * 9) / 10
+        let scale = abs(NSGraphicsContext.current?.cgContext.convertToDeviceSpace(CGSize(width: 0, height: 1)).height ?? 1)
         for index in 0..<10 {
             let level = bands.indices.contains(index) ? bands[index] : 0
-            let segments = Int((level * 8).rounded(.up))
-            for segment in 0..<max(1, segments) {
-                (segments == 0 ? Theme.border : Theme.text).setFill()
-                NSRect(x: CGFloat(index) * (width + gap), y: CGFloat(segment) * 4,
-                       width: width, height: 2).fill()
-            }
+            let height = (CGFloat(level) * bounds.height * scale).rounded(.down) / scale
+            (height == 0 ? Theme.border : Theme.text).setFill()
+            NSRect(x: CGFloat(index) * (width + gap), y: 0,
+                   width: width, height: height == 0 ? 2 : height).fill()
         }
     }
 }
