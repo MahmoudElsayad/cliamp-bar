@@ -110,20 +110,22 @@ func spectrumTests() throws {
     try script.replacingOccurrences(of: "#!/bin/sh", with: "#!/bin/sh\ntrap '' TERM").write(to: resistant, atomically: true, encoding: .utf8)
     try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: resistant.path)
     var disposable: SpectrumSession? = SpectrumSession()
-    weak var released = disposable
+    let wasReleased = { [weak disposable] in disposable == nil }
     var delivered = false
     disposable?.onFrame = { if !$0.isEmpty { delivered = true } }
     disposable?.update(visible: true, connected: true, playing: true, reduceMotion: false, executable: resistant)
     try waitUntil("A resistant stream starts") { delivered }
     let resistantPID = launches().last!.0
+    let beforeRestart = launches().count
     disposable?.update(visible: false, connected: true, playing: true, reduceMotion: false, executable: resistant)
-    try waitUntil("Stop kills a child that ignores SIGTERM") { !processExists(resistantPID) }
     disposable?.update(visible: true, connected: true, playing: true, reduceMotion: false, executable: resistant)
     delivered = false
-    try waitUntil("A resistant stream restarts before release") { delivered }
+    pump(0.1)
+    try expect(processExists(resistantPID) && launches().count == beforeRestart, "Reopening cannot overlap a child that ignores SIGTERM")
+    try waitUntil("A resistant stream restarts after its old child exits") { delivered && !processExists(resistantPID) }
     let releasedPID = launches().last!.0
     disposable = nil
-    try expect(released == nil && !processExists(releasedPID), "Session release breaks callbacks and kills its child")
+    try expect(wasReleased() && !processExists(releasedPID), "Session release breaks callbacks and kills its child")
 
     let failing = directory.appendingPathComponent("failing-stream")
     try "#!/bin/sh\nprintf '%s\\n' \"$$\" >> '\(log.path)'\nexit 1\n".write(to: failing, atomically: true, encoding: .utf8)

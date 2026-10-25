@@ -18,6 +18,10 @@ func unitTests() throws {
     let shell = URL(fileURLWithPath: "/bin/sh")
     let output = try CommandRunner.run(shell, arguments: ["-c", "i=0; while [ $i -lt 10000 ]; do echo stdout; echo stderr >&2; i=$((i+1)); done"], timeout: 5)
     try expect(output.count == 70_000, "Both pipes drain without a deadlock")
+    for _ in 0..<80 {
+        let response = try CommandRunner.run(shell, arguments: ["-c", "printf '{\"ok\":true}'"])
+        try expect(String(decoding: response, as: UTF8.self) == "{\"ok\":true}", "Fast command exits retain their complete response")
+    }
     do {
         _ = try CommandRunner.run(shell, arguments: ["-c", "echo 'specific failure' >&2; exit 7"])
         throw CliampError(message: "A failed command must throw")
@@ -172,6 +176,6 @@ do {
     if CommandLine.arguments.contains("--integration") { try integrationTests() }
     else { try unitTests() }
 } catch {
-    fputs("FAIL: \(error.localizedDescription)\n", stderr)
+    fputs("FAIL: \(String(reflecting: error))\n", stderr)
     exit(1)
 }

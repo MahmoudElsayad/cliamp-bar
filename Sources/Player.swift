@@ -181,7 +181,8 @@ enum CommandRunner {
                     if count > 0 { sink.append(Data(buffer.prefix(count))); continue }
                     if count == 0 { break }
                     if errno != EAGAIN && errno != EINTR { break }
-                    if !process.isRunning { break }
+                    // Observe exit before reading, so bytes written just before exit get one final drain.
+                    if exitedAt != nil { break }
                     var descriptorState = pollfd(fd: descriptor, events: Int16(POLLIN), revents: 0)
                     _ = poll(&descriptorState, 1, 100)
                 }
