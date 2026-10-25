@@ -1,5 +1,16 @@
 #!/bin/sh
 set -eu
+if [ -n "${CLIAMP_BINARY:-}" ]; then
+  case "$CLIAMP_BINARY" in
+    /*) ;;
+    *) CLIAMP_BINARY="$PWD/$CLIAMP_BINARY" ;;
+  esac
+  export CLIAMP_BINARY
+  if [ ! -x "$CLIAMP_BINARY" ]; then
+    echo "CLIAMP_BINARY does not name an executable: $CLIAMP_BINARY" >&2
+    exit 1
+  fi
+fi
 cd "$(dirname "$0")"
 
 if [ "$(uname -s)" != Darwin ]; then

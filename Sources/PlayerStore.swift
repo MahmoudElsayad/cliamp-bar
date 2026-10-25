@@ -95,7 +95,8 @@ final class PlayerStore {
             let result = Result { try client.snapshot() }
             DispatchQueue.main.async {
                 self.refreshing = false
-                guard self.client === client, generation == self.commandGeneration else { return }
+                guard self.client === client else { return }
+                guard generation == self.commandGeneration else { self.refresh(); return }
                 switch result {
                 case .success(let state):
                     self.snapshot = state
